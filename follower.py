@@ -44,24 +44,30 @@ def main():
     f = open(filename)
 
     for line in f:
-        error = False;
+        timeout = False;
         ParsedJSON = aapi.user_follow_add(int(line),restrict="private")
-        if("error" in ParsedJSON):
-            print("Timeout! Trying again soon")
-            print(ParsedJSON)
-            error = True
+        print(ParsedJSON)
+        if('restricted' in ParsedJSON["error"]["user_message"]): 
+             print("Access Restricted! Trying again soon")
+             timeout = True
+        elif( 'Rate Limit' in ParsedJSON["error"]["message"]):
+             print("Timeout! Trying again soon")
+             timeout = True
 
         timeouttime = 0
-        while(error):
+        while(timeout):
             ParsedJSON = aapi.user_follow_add(int(line),restrict="private")
             time.sleep(10)
-            if("error" in ParsedJSON):
+            if('restricted' in ParsedJSON["error"]["user_message"] or 'Rate Limit' in ParsedJSON["error"]["message"]):
                 timeouttime+=10
             else: 
                  print("Timeout took " + str(timeouttime) + " seconds")
-                 error = False
+                 timeout = False
 
         print("Followed " + line)
+
+        #Waits a few seconds before each request to avoid getting rate limited
+        #Doesn't seem to work all that well though...
         time.sleep(5)
     f.close()
 
