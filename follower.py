@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
 import sys
 import time
 
@@ -42,33 +43,39 @@ def main():
         raise _e
 
     f = open(filename)
+    log = open("log.txt","a+")
 
     for line in f:
-        timeout = False;
-        ParsedJSON = aapi.user_follow_add(int(line),restrict="private")
-        print(ParsedJSON)
-        if('restricted' in ParsedJSON["error"]["user_message"]): 
-             print("Access Restricted! Trying again soon")
-             timeout = True
-        elif( 'Rate Limit' in ParsedJSON["error"]["message"]):
-             print("Timeout! Trying again soon")
-             timeout = True
-
-        timeouttime = 0
-        while(timeout):
+        log.seek(0, os.SEEK_SET)
+        if(line not in log.read()):
+            timeout = False;
             ParsedJSON = aapi.user_follow_add(int(line),restrict="private")
+#            print(ParsedJSON)
+            if('error' in ParsedJSON and 'user_message' in ParsedJSON['error'] and 'restricted' in ParsedJSON['error']['user_message']): 
+                 print("Access Restricted! Try again later")
+                 exit(0);
+            elif('error' in ParsedJSON and 'message' in ParsedJSON['error'] and 'Rate Limit' in ParsedJSON['error']['message']):
+                 print("Timeout! Trying again soon")
+                 timeout = True
+    
+            timeouttime = 0
+            while(timeout):
+                ParsedJSON = aapi.user_follow_add(int(line),restrict="private")
+                time.sleep(10)
+                if('error' in ParsedJSON and 'message' in ParsedJSON['error'] and 'Rate Limit' in ParsedJSON['error']['message']): 
+                   timeouttime+=10
+                else: 
+                    print("Timeout took " + str(timeouttime) + " seconds")
+                    timeout = False
+    
+            print("Followed " + line)
+
+            log.seek(0, os.SEEK_END)
+            print(int(line),file=log)
+    
+            #Waits a few seconds before each request to avoid getting rate limited
+            #Doesn't seem to work all that well though...
             time.sleep(10)
-            if('restricted' in ParsedJSON["error"]["user_message"] or 'Rate Limit' in ParsedJSON["error"]["message"]):
-                timeouttime+=10
-            else: 
-                 print("Timeout took " + str(timeouttime) + " seconds")
-                 timeout = False
-
-        print("Followed " + line)
-
-        #Waits a few seconds before each request to avoid getting rate limited
-        #Doesn't seem to work all that well though...
-        time.sleep(5)
     f.close()
 
 
